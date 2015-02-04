@@ -28,23 +28,26 @@ namespace FancontrolLogger
             client.StartFanControl();
 
             // stop recursive calling and end the program
-            bool stop = false;
+            var tokenSource = new CancellationTokenSource();
 
             // read the import on another thread
             // loop below does not allow user input
             Task.Factory.StartNew(() => { 
                 Console.ReadLine(); 
                 Console.WriteLine("Stopping ..."); 
-                stop = true; 
+                tokenSource.Cancel();
             });
 
             // until ReadLine in Task above 
-            while (!stop) {
+            while (tokenSource.IsCancellationRequested == false) {
                 // update view model to trigger changes
-                Task.Factory.StartNew(() => {
+                try {
                     client.UpdateViewModel();
-                    Thread.Sleep(updateIntervalInTimeSpan);
-                }).Wait();
+                    Task.Delay(updateIntervalInTimeSpan, tokenSource.Token).Wait();
+                } 
+                catch (Exception) { 
+                    // ignore 
+                }
             }
         }
     }
